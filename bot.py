@@ -1,5 +1,3 @@
-# bot.py – random video bot with “Get Video” button reappearing after each send
-
 import os
 import json
 import random
@@ -13,8 +11,8 @@ from telegram.ext import (
     ContextTypes,
 )
 
-# Railway will inject your token here (DO NOT PUT YOUR TOKEN IN THE CODE)
-BOT_TOKEN = os.getenv("8580858808:AAHJwQeXeQpGNa4jrg2WqMhhSfZP_XhbV4s")
+# Railway injects this automatically
+BOT_TOKEN = os.getenv("8580858808:AAHJwQeXeQpGNa4jrg2WqMhhSfZP_XhbV4s")  # <-- MUST match Railway variable name
 
 VIDEOS_JSON = "videos.json"
 
@@ -37,21 +35,16 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def get_video_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()  # acknowledge the button press quickly
+    await query.answer()
 
     videos = load_videos()
-
     if not videos:
-        await query.message.reply_text("No videos found in the list.")
+        await query.message.reply_text("No videos found.")
         return
 
-    # Pick a random video file_id
     video_id = random.choice(videos)
 
-    # Rebuild keyboard for next video
     keyboard = [[InlineKeyboardButton("Get Video ▶️", callback_data="get_video")]]
-
-    # Send the video + new button
     await query.message.reply_animation(
         animation=video_id,
         reply_markup=InlineKeyboardMarkup(keyboard),
@@ -59,15 +52,48 @@ async def get_video_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 
 async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Admin uploads a new video → its file_id gets stored into videos.json"""
+    """Store new file_id when admin uploads video"""
     video = update.message.animation or update.message.video
     if not video:
         return
 
     file_id = video.file_id
+
     videos = load_videos()
     videos.append(file_id)
 
     with open(VIDEOS_JSON, "w") as f:
-        js
+        json.dump(videos, f, indent=4)
 
+    await update.message.reply_text("Video saved ✔️")
+
+
+async def main():
+    if not BOT_TOKEN:
+        print("ERROR: BOT_TOKEN not found!")
+        return
+
+    print("Bot starting with token loaded...")
+
+    app = ApplicationBuilder().token(BOT_TOKEN).build()
+
+    # Commands
+    app.add_handler(CommandHandler("start", start))
+
+    # Callback (Get Video)
+    app.add_handler(CallbackQueryHandler(get_video_callback))
+
+    # Save uploaded videos (admin only)
+    app.add_handler(MessageHandler(filters.VIDEO | filters.ANIMATION, handle_video))
+
+    # Start bot
+    await app.initialize()
+    await app.start()
+    print("Bot is running...")
+    await app.updater.start_polling()
+    await app.idle()
+
+
+if __name__ == "__main__":
+    import asyncio
+    asyncio.run(main())
