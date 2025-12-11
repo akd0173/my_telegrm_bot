@@ -12,7 +12,7 @@ from telegram.ext import (
 )
 
 # ⏺️ Load BOT_TOKEN from Railway Environment Variable
-BOT_TOKEN = os.getenv("BOT_TOKEN")
+BOT_TOKEN = os.getenv("8580858808:AAHJwQeXeQpGNa4jrg2WqMhhSfZP_XhbV4s")
 
 print("Loaded token:", BOT_TOKEN)
 if not BOT_TOKEN:
@@ -86,3 +86,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
