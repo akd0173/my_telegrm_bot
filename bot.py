@@ -1,10 +1,11 @@
 # bot.py — random video bot with "Get Video" button reappearing after each send
+import os
 import json
 import random
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
 
-BOT_TOKEN = "8580858808:AAGN5DlACmPHI78xjTmfNnTpHBWXsPVwqK4"  # <-- put your token here on your machine
+BOT_TOKEN = os.getenv("8580858808:AAGN5DlACmPHI78xjTmfNnTpHBWXsPVwqK4")  # <-- put your token here on your machine
 VIDEOS_JSON = "videos.json"
 
 def load_videos():
@@ -89,3 +90,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
