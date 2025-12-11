@@ -23,8 +23,8 @@ from telegram.ext import (
 # ---------- TOKEN (env preferred) ----------
 # Render/Heroku/Railway: set the environment variable BOT_TOKEN in the service settings.
 # Fallback to the fake token provided (only for local testing; OK to keep here because it's fake).
-FALLBACK_FAKE_TOKEN = "8580858808:AAHJwQeXeQpGNa4jrg2WqMhhSfZP_XhbV4s"
-BOT_TOKEN = os.getenv("BOT_TOKEN") or FALLBACK_FAKE_TOKEN
+FALLBACK_FAKE_TOKEN = "8580858808:AAHwRlkUoIIE1kpTHBZ0r9YnH5f_WNfkio4"
+BOT_TOKEN = os.getenv("8580858808:AAHwRlkUoIIE1kpTHBZ0r9YnH5f_WNfkio4") or FALLBACK_FAKE_TOKEN
 
 if BOT_TOKEN is None or BOT_TOKEN.strip() == "":
     print("ERROR: No BOT_TOKEN provided (env or fallback). Exiting.")
@@ -135,3 +135,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
