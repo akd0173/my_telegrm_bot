@@ -1,15 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-Render-ready Telegram bot.
-It reads BOT_TOKEN from the environment. If not found, it falls back to a fake token
-(useful for local testing). When deploying to Render, add BOT_TOKEN in the service
-Environment Variables so the real token is used.
+Telegram bot using Application.run_polling() so hosted platforms (Railway/Render)
+handle shutdown signals gracefully and we avoid noisy asyncio.CancelledError logs.
 """
 
 import os
 import json
 import random
-import asyncio
+import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     ApplicationBuilder,
@@ -20,36 +18,43 @@ from telegram.ext import (
     ContextTypes,
 )
 
-# ---------- TOKEN (env preferred) ----------
-# Render/Heroku/Railway: set the environment variable BOT_TOKEN in the service settings.
-# Fallback to the fake token provided (only for local testing; OK to keep here because it's fake).
+# Logging setup
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)-7s | %(message)s"
+)
+logger = logging.getLogger(__name__)
+
+# Read token from environment (do NOT commit a real token in code)
 FALLBACK_FAKE_TOKEN = "8580858808:AAHwRlkUoIIE1kpTHBZ0r9YnH5f_WNfkio4"
 BOT_TOKEN = os.getenv("8580858808:AAHwRlkUoIIE1kpTHBZ0r9YnH5f_WNfkio4") or FALLBACK_FAKE_TOKEN
 
-if BOT_TOKEN is None or BOT_TOKEN.strip() == "":
-    print("ERROR: No BOT_TOKEN provided (env or fallback). Exiting.")
+if not BOT_TOKEN:
+    logger.error("BOT_TOKEN not provided. Exiting.")
     raise SystemExit(1)
 
 VIDEOS_JSON = "videos.json"
 
 
-# ---------- Utilities ----------
 def load_videos():
     try:
         with open(VIDEOS_JSON, "r", encoding="utf-8") as f:
             return json.load(f)
     except FileNotFoundError:
         return []
-    except Exception:
+    except Exception as e:
+        logger.warning("Failed to load videos.json: %s", e)
         return []
 
 
 def save_videos(list_of_ids):
-    with open(VIDEOS_JSON, "w", encoding="utf-8") as f:
-        json.dump(list_of_ids, f, indent=2, ensure_ascii=False)
+    try:
+        with open(VIDEOS_JSON, "w", encoding="utf-8") as f:
+            json.dump(list_of_ids, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        logger.error("Failed to save videos.json: %s", e)
 
 
-# ---------- Handlers ----------
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [[InlineKeyboardButton("Get Video ▶️", callback_data="get_video")]]
     await update.message.reply_text(
@@ -59,11 +64,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def get_video_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()  # acknowledge
+    await query.answer()
 
     videos = load_videos()
     if not videos:
-        # remove button from original message (if possible) and inform
         try:
             await query.message.edit_reply_markup(reply_markup=None)
         except Exception:
@@ -80,7 +84,7 @@ async def get_video_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await query.message.reply_text(f"Failed to send video: {e}")
         return
 
-    # remove inline keyboard from previous message and send new button below the video
+    # remove inline keyboard from previous message (if any) and send new button
     try:
         await query.message.edit_reply_markup(reply_markup=None)
     except Exception:
@@ -95,7 +99,6 @@ async def get_video_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 
 async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """When a user (or admin) uploads a video or animation, save its file_id."""
     msg = update.message
     if not msg:
         return
@@ -115,24 +118,22 @@ async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await msg.reply_text("This video is already saved.")
 
 
-# ---------- Main (async) ----------
-async def main():
-    print("Starting bot...")
+def build_and_run():
+    logger.info("Using BOT_TOKEN: %s", "provided" if os.getenv("BOT_TOKEN") else "fallback (local)")
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
-    # register handlers
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(get_video_callback, pattern="get_video"))
     app.add_handler(MessageHandler(filters.VIDEO | filters.ANIMATION, handle_video))
 
-    # initialize and run
-    await app.initialize()
-    await app.start()
-    print("Bot is running (polling)...")
-    await app.updater.start_polling()
-    await app.idle()
+    # run_polling handles signals / graceful shutdown on hosted platforms
+    logger.info("Starting polling (this will block until stopped)...")
+    app.run_polling(poll_interval=1.0)
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
-
+    try:
+        build_and_run()
+    except Exception as e:
+        logger.exception("Unhandled exception in main: %s", e)
+        raise
