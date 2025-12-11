@@ -14,7 +14,7 @@ from telegram.ext import (
 )
 
 # Railway will inject your token here (DO NOT PUT YOUR TOKEN IN THE CODE)
-BOT_TOKEN = os.getenv("8580858808:AAGN5DlACmPHI78xjTmfNnTpHBWXsPVwqK4")
+BOT_TOKEN = os.getenv("8580858808:AAHJwQeXeQpGNa4jrg2WqMhhSfZP_XhbV4s")
 
 VIDEOS_JSON = "videos.json"
 
@@ -70,3 +70,4 @@ async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     with open(VIDEOS_JSON, "w") as f:
         js
+
